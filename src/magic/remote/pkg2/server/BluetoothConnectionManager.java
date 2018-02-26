@@ -28,6 +28,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.bluetooth.BluetoothStateException;
 import javax.bluetooth.RemoteDevice;
 import javax.microedition.io.Connection;
 import javax.microedition.io.Connector;
@@ -42,186 +43,89 @@ public class BluetoothConnectionManager {
 
     private static BluetoothConnectionManager instance = new BluetoothConnectionManager();
 
+    protected volatile String connectionStatus = "not connected";
+
+    protected Queue<String> writerQueue = new LinkedList<>();
+    protected Queue<String> processingQueue = new LinkedList<>();
+
+    protected StreamConnectionNotifier notifier;
+    protected StreamConnection connection;
+
+    protected InputStream inputStream;
+    protected OutputStream outputStream;
+
+    protected RemoteDevice remoteDevice;
+    protected LocalDevice localDevice;
+
+    protected Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+    protected int screenWidth = (int) screenSize.getWidth();
+    protected int screenHeight = (int) screenSize.getHeight();
+
+    protected Thread readThread;
+    protected Thread writeThread;
+    protected Thread heartbeatThread;
+    protected Thread processingThread;
+    
+    private BluetoothConnectionManager() {
+        try {
+            localDevice = LocalDevice.getLocalDevice();
+        } catch (BluetoothStateException ex) {
+            Logger.getLogger(BluetoothConnectionManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+
     public static BluetoothConnectionManager getInstance() {
         return instance;
     }
 
-    public volatile String connectionStatus = "not connected";
-    private Queue<String> writerQueue = new LinkedList<>();
-    private RemoteDevice remoteDevice;
-    private InputStream inputStream;
-    private OutputStream outputStream;
-//    private BufferedReader inputReader;
-//    private PrintWriter outputWriter;
-    private StreamConnectionNotifier notifier;
-    private StreamConnection connection;
-    private LocalDevice localDevice;
+    public Dimension getScreenSize() {
+        return screenSize;
+    }
 
-    Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-    int screenWidth = (int) screenSize.getWidth();
-    int screenHeight = (int) screenSize.getHeight();
+    public int getScreenWidth() {
+        return screenWidth;
+    }
 
-    private Thread readThread = new Thread() {
-        @Override
-        public void run() {
-            byte[] buffer = new byte[10240];
-            int bytes;
-
-            MouseKeyboardControl controller = new MouseKeyboardControl();
-
-            while (connectionStatus.equals("connected")) {
-                try {
-                    System.out.println("Trying to read input stream");
-                    bytes = inputStream.read(buffer);
-                    if (bytes == -1) {
-                        connectionStatus = "disconnected";
-                        stopConnection();
-                        break;
-                    }
-                    String incomingMessage = new String(buffer, 0, bytes);
-                    System.out.println("Input Stream: " + incomingMessage);
-
-                    //process command here
-                    String command = incomingMessage;
-                    String[] commandList = incomingMessage.split(Constants.DELIM);
-
-                    String action = commandList[0];
-//                    if (action.equals("TYPE_CHARACTER")) {
-//                        String textToType = commandList[1];
-//                        controller.typeString(textToType);
-//                    }
-
-                    //////////
-                    switch (action) {
-                        case "LEFT_CLICK":
-                            controller.leftClick();
-                            break;
-                        case "RIGHT_CLICK":
-                            controller.rightClick();
-                            break;
-                        case "DOUBLE_CLICK":
-                            controller.doubleClick();
-                            break;
-                        case "MOUSE_WHEEL":
-                            int scrollAmount = Integer.parseInt(commandList[1]);
-                            controller.mouseWheel(scrollAmount);
-                            break;
-                        case "MOUSE_MOVE":
-                            float x = Float.parseFloat(commandList[1]);
-                            float y = Float.parseFloat(commandList[2]);
-                            Point point = MouseInfo.getPointerInfo().getLocation();
-                            // Get current mouse position
-                            float nowx = point.x;
-                            float nowy = point.y;
-                            controller.mouseMove((int) (nowx + x), (int) (nowy + y));
-                            break;
-                        case "MOUSE_MOVE_LIVE":
-                            // need to adjust coordinates 
-                            float xCord = Float.parseFloat(commandList[1]);
-                            float yCord = Float.parseFloat(commandList[2]);
-                            xCord = xCord * screenWidth;
-                            yCord = yCord * screenHeight;
-                            controller.mouseMove((int) xCord, (int) yCord);
-                            break;
-                        case "KEY_PRESS":
-                            int keyCode = Integer.parseInt(commandList[1]);
-                            controller.keyPress(keyCode);
-                            break;
-                        case "KEY_RELEASE":
-                            keyCode = Integer.parseInt(commandList[1]);
-                            controller.keyRelease(keyCode);
-                            break;
-                        case "CTRL_ALT_T":
-                            controller.ctrlAltT();
-                            break;
-                        case "CTRL_SHIFT_Z":
-                            controller.ctrlShiftZ();
-                            break;
-                        case "ALT_F4":
-                            controller.altF4();
-                            break;
-                        case "TYPE_CHARACTER":
-                            //handle StringIndexOutOfBoundsException here when pressing soft enter key
-                            String ch = commandList[1];
-                            controller.typeString(ch);
-                            break;
-                        case "TYPE_KEY":
-                            keyCode = Integer.parseInt(commandList[1]);
-                            controller.typeCharacter(keyCode);
-                            break;
-                        case "LEFT_ARROW_KEY":
-                            controller.pressLeftArrowKey();
-                            break;
-                        case "DOWN_ARROW_KEY":
-                            controller.pressDownArrowKey();
-                            break;
-                        case "RIGHT_ARROW_KEY":
-                            controller.pressRightArrowKey();
-                            break;
-                        case "UP_ARROW_KEY":
-                            controller.pressUpArrowKey();
-                            break;
-                        case "F5_KEY":
-                            controller.pressF5Key();
-                            break;
-                    }
-                    /////////
-
-                } catch (IOException ex) {
-                    Logger.getLogger(BluetoothConnectionManager.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            }
-            System.out.println("Connection Closed");
-        }
-
-    };
-
-    private Thread writeThread = new Thread() {
-        @Override
-        public void run() {
-
-            while (connectionStatus.equals("connected")) {
-                if (writerQueue.size() > 0) {
-                    String message = writerQueue.peek();
-                    if (message != null) {
-                        System.out.println("Sending Message: " + message);
-                        //The following line actually sends the data - RME
-//                        outputWriter.write(message);
-                        try {
-                            outputStream.write(message.getBytes());
-                            outputStream.flush();
-
-                        } catch (IOException ex) {
-                            Logger.getLogger(BluetoothConnectionManager.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-
-                        writerQueue.poll();
-                    }
-                }
-            }
-        }
-
-    };
-
-    private Thread heartbeatThread = new Thread() {
-        @Override
-        public void run() {
-            while (connectionStatus.equals("connected")) {
-                try {
-                    write("Heartbeat");
-                    sleep(10000);
-                } catch (InterruptedException ex) {
-                    Logger.getLogger(BluetoothConnectionManager.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            }
-        }
-    };
+    public int getScreenHeight() {
+        return screenHeight;
+    }
 
     public RemoteDevice getRemoteDevice() {
         return remoteDevice;
     }
 
-    private BluetoothConnectionManager() {
+    public LocalDevice getLocalDevice() {
+        return localDevice;
+    }
+
+    
+    
+    public String getConnectionStatus() {
+        return connectionStatus;
+    }
+
+    public void setConnectionStatus(String connectionStatus) {
+        this.connectionStatus = connectionStatus;
+    }
+
+    public Queue<String> getWriterQueue() {
+        return writerQueue;
+    }
+
+    public Queue<String> getProcessingQueue() {
+        return processingQueue;
+    }
+
+    public void write(String message) {
+        writerQueue.add(message);
+    }
+
+    public void sendData(String data) throws IOException {
+        if (outputStream != null) {
+            outputStream.write(data.getBytes());
+            outputStream.flush();
+        }
     }
 
     public void startConnection() {
@@ -229,13 +133,24 @@ public class BluetoothConnectionManager {
             @Override
             public void run() {
                 try {
+
+                    LocalDevice device = LocalDevice.getLocalDevice();
+                    if (device.getDiscoverable() != DiscoveryAgent.GIAC) {
+                        device.setDiscoverable(DiscoveryAgent.GIAC);
+                    }
+
                     UUID uuid = new UUID(Constants.UUID.replace("-", ""), false); //UUID.fromString(Constants.UUID);
+                    System.out.println("My UUID: "+ uuid);
+                    
+                    java.util.UUID uuid2 = java.util.UUID.fromString(Constants.UUID);
+                    System.out.println("My UUID 2: "+ uuid2);
+                    
                     String connectionString = "btspp://localhost:" + uuid.toString() + ";name=" + Constants.APP_NAME + " Server";
                     //String connectionString = "btspp://localhost:" + uuid.toString() + ";name=RemoteBluetooth";
 
                     connectionStatus = "connecting";
 
-                    notifier = (StreamConnectionNotifier) Connector.open(connectionString);;
+                    notifier = (StreamConnectionNotifier) Connector.open(connectionString);
                     System.out.println("Starting Connection...");
 
                     try {
@@ -243,17 +158,24 @@ public class BluetoothConnectionManager {
                         System.out.println("Connection established");
 
                         writerQueue.clear();
+                        processingQueue.clear();
 
                         remoteDevice = RemoteDevice.getRemoteDevice(connection);
                         inputStream = connection.openInputStream();
                         outputStream = connection.openOutputStream();
 
-//                        inputReader = new BufferedReader(new InputStreamReader(inputStream));
-//                        outputWriter = new PrintWriter(new OutputStreamWriter(outputStream));
                         connectionStatus = "connected";
+                        
+                        processingThread = new Thread(new ProcessingRunner());
+                        processingThread.start();
 
+                        readThread = new Thread(new ReadRunner());
                         readThread.start();
+
+                        writeThread = new Thread(new WriteRunner());
                         writeThread.start();
+
+                        heartbeatThread = new Thread(new HeartBeatRunner());
                         heartbeatThread.start();
                     } catch (InterruptedIOException e) {
                         System.out.println("Connection aborted");
@@ -270,40 +192,37 @@ public class BluetoothConnectionManager {
     public void stopConnection() {
         try {
             connectionStatus = "disconnected";
-            
+
             if (notifier != null) {
-                System.out.println("CONNECTION CLOSE 2");
+                System.out.println("CONNECTION CLOSE 1");
                 notifier.close();
             }
             if (connection != null) {
-                System.out.println("CONNECTION CLOSE 1");
+                System.out.println("CONNECTION CLOSE 2");
                 connection.close();
             }
-            
-//            if (outputWriter != null) {
-//                System.out.println("CONNECTION CLOSE 3");
-//                outputWriter.close();
-//            }
-//            if (inputReader != null) {
-//                System.out.println("CONNECTION CLOSE 4");
-//                inputReader.close();
-//            }
+
             if (inputStream != null) {
-                System.out.println("CONNECTION CLOSE 5");
+                System.out.println("CONNECTION CLOSE 3");
                 inputStream.close();
             }
             if (outputStream != null) {
-                System.out.println("CONNECTION CLOSE 6");
+                System.out.println("CONNECTION CLOSE 4");
                 outputStream.close();
             }
             if (remoteDevice != null) {
-                System.out.println("CONNECTION CLOSE 7");
+                System.out.println("CONNECTION CLOSE 5");
                 remoteDevice = null;
             }
 
             if (writerQueue != null) {
-                System.out.println("CONNECTION CLOSE 8");
+                System.out.println("CONNECTION CLOSE 6");
                 writerQueue.clear();
+            }
+            
+            if(processingQueue!=null) {
+                System.out.println("CONNECTION CLOSE 7");
+                processingQueue.clear();
             }
         } catch (IOException ex) {
             Logger.getLogger(BluetoothConnectionManager.class.getName()).log(Level.SEVERE, null, ex);
@@ -311,9 +230,4 @@ public class BluetoothConnectionManager {
             e.printStackTrace();
         }
     }
-
-    public void write(String message) {
-        writerQueue.add(message);
-    }
-
 }

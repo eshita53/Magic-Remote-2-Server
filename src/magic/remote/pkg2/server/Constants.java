@@ -12,5 +12,5 @@ package magic.remote.pkg2.server;
 public class Constants {
     public static final String UUID= "6fd26f17-a553-4b80-89d9-ced4ae33b728";
     public static final String APP_NAME="MagicRemote";
-    public static final String DELIM="<TKD-RME-MAS>";
+    public static final String DELIM="<R#A@T>";
 }

@@ -5,7 +5,9 @@
  */
 package magic.remote.pkg2.server;
 
+import java.awt.event.WindowEvent;
 import javafx.application.Application;
+import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -24,16 +26,23 @@ public class Main extends Application {
     public void start(Stage stage) throws Exception {
         Parent root = null;
         FXMLLoader loader = new FXMLLoader(getClass().getResource("MainScreen.fxml"));
-        loader.setRoot(root);
         loader.setController(controller);
         root = loader.load();
+        loader.setRoot(root);
 
         Scene scene = new Scene(root);
 
         stage.setScene(scene);
         stage.setTitle("Magic Remote");
-        stage.getIcons().add(new Image("https://image.ibb.co/k0t0Cc/icon.png"));
+        stage.getIcons().add(new Image(getClass().getResourceAsStream("images/icon.png")));
+        stage.setResizable(false);
         stage.show();
+    
+        stage.setOnCloseRequest(e->{
+            BluetoothConnectionManager bluetoothConnection = BluetoothConnectionManager.getInstance();
+            if(bluetoothConnection!=null) bluetoothConnection.stopConnection();
+            controller.setIsShowing(false);
+        });
     }
 
     /**

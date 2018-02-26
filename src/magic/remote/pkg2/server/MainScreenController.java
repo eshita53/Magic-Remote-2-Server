@@ -7,6 +7,7 @@ package magic.remote.pkg2.server;
 
 import static java.awt.SystemColor.text;
 import java.io.IOException;
+import static java.lang.Thread.sleep;
 import java.net.URL;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
@@ -26,35 +27,38 @@ import javafx.scene.text.Text;
 public class MainScreenController implements Initializable {
 
     BluetoothConnectionManager connectionManager = BluetoothConnectionManager.getInstance();
+    private volatile boolean isShowing;
 
     @FXML
     Button connectButton;
     @FXML
     Text connectionStatus;
 
+    public void setIsShowing(boolean b) {
+        isShowing = b;
+    }
+
     @FXML
     private void connectButtonClick(ActionEvent event) {
         if (connectionManager.connectionStatus.equals("disconnected") || connectionManager.connectionStatus.equals("not connected")) {
-//            connectButton.setText("Stop waiting");
-//            connectionStatus.setText("Waiting for connection...");
-//            connectionStatus.setFill(Color.web("#536DFE"));
             connectionManager.startConnection();
-
         } else {
             connectionManager.stopConnection();
-//            connectButton.setText("Connect");
-//            connectionStatus.setText("Previous connection aborted. Ready for new connection");
-//            connectionStatus.setFill(Color.CRIMSON);
         }
     }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        isShowing = true;
+        showStatus();
+    }
+
+    public void showStatus() {
         Thread statusManager = new Thread() {
             @Override
             public void run() {
                 String prevStatus = "";
-                while (true) {
+                while (isShowing == true) {
                     try {
                         sleep(150);
                     } catch (InterruptedException ex) {
@@ -75,8 +79,8 @@ public class MainScreenController implements Initializable {
                             connectionStatus.setText("Connected to remote device");
                             try {
                                 String name = connectionManager.getRemoteDevice().getFriendlyName(true);
-                                connectionStatus.setText("Connected to "+name);
-                            } catch(Exception e) {
+                                connectionStatus.setText("Connected to " + name);
+                            } catch (Exception e) {
                                 connectionStatus.setText("Connected to remote device");
                             }
                             connectionStatus.setFill(Color.GREEN);
@@ -84,15 +88,24 @@ public class MainScreenController implements Initializable {
 
                     } else if (currentStatus.equals("connecting")) {
                         Platform.runLater(() -> {
-                            connectButton.setText("Stop waiting");
+                            connectButton.setText("Stop\nwaiting");
                             connectionStatus.setText("Waiting for connection...");
+                            
+                            try {
+                                String localName = connectionManager.getLocalDevice().getFriendlyName();
+                                if(localName!=null)  connectionStatus.setText("Waiting for connection\nDevice Name: \""+localName + "\"");
+                            } catch(Exception e) {
+                                System.out.println(e.toString());
+                                e.printStackTrace();
+                            }
+                            
                             connectionStatus.setFill(Color.web("#536DFE"));
                         });
 
                     } else if (currentStatus.equals("disconnected")) {
                         Platform.runLater(() -> {
                             connectButton.setText("Connect");
-                            connectionStatus.setText("Previous connection aborted. Ready for new connection");
+                            connectionStatus.setText("Previous connection aborted.\nReady for new connection");
                             connectionStatus.setFill(Color.CRIMSON);
                         });
 
