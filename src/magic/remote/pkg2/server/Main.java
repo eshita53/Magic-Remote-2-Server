@@ -5,14 +5,24 @@
  */
 package magic.remote.pkg2.server;
 
+import java.awt.AWTException;
+import java.awt.Rectangle;
+import java.awt.Robot;
+import java.awt.Toolkit;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.application.Application;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import javax.imageio.ImageIO;
 
 /**
  *
@@ -34,13 +44,15 @@ public class Main extends Application {
 
         stage.setScene(scene);
         stage.setTitle("Magic Remote");
-        stage.getIcons().add(new Image(getClass().getResourceAsStream("images/icon.png")));
+        stage.getIcons().add(new Image(getClass().getResourceAsStream("images/icon2small.png")));
         stage.setResizable(false);
         stage.show();
-    
-        stage.setOnCloseRequest(e->{
+
+        stage.setOnCloseRequest(e -> {
             BluetoothConnectionManager bluetoothConnection = BluetoothConnectionManager.getInstance();
-            if(bluetoothConnection!=null) bluetoothConnection.stopConnection();
+            if (bluetoothConnection != null) {
+                bluetoothConnection.stopConnection();
+            }
             controller.setIsShowing(false);
         });
     }

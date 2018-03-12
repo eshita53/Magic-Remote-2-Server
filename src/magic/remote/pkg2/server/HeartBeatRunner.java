@@ -22,7 +22,7 @@ public class HeartBeatRunner implements Runnable {
         while (bluetoothConnection.connectionStatus.equals("connected")) {
             try {
                 bluetoothConnection.write("Heartbeat " + counter++);
-                sleep(10000);
+                sleep(4000);
             } catch (InterruptedException ex) {
                 Logger.getLogger(BluetoothConnectionManager.class.getName()).log(Level.SEVERE, null, ex);
             }
