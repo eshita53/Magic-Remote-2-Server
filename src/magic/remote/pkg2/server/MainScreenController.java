@@ -62,7 +62,7 @@ public class MainScreenController implements Initializable {
     public void initialize(URL url, ResourceBundle rb) {
         isShowing = true;
         showStatus();
-        startScreenshot();
+        //startScreenshot();
     }
 
     boolean bufferedImagesEqual(BufferedImage img1, BufferedImage img2) {
