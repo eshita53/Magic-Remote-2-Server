@@ -33,7 +33,7 @@ public class ReadRunner implements Runnable {
                     break;
                 }
                 
-                String incomingMessage = new String(buffer, 0, bytes);
+                String incomingMessage = new String(buffer, 0, bytes, "UTF-8");
 //                System.out.println("Input Stream: " + incomingMessage);
 
                 //process command here

@@ -17,21 +17,21 @@ import java.util.logging.Logger;
  * @author Tanmoy Krishna Das
  */
 public class ProcessingRunner implements Runnable {
-
+    
     BluetoothConnectionManager bluetoothConnection = BluetoothConnectionManager.getInstance();
     int sleepTime = 40;
     int longSleepTime = 100;
     int counter = 1;
-
+    
     @Override
     public void run() {
         Queue<String> processingQueue = bluetoothConnection.getProcessingQueue();
         MouseKeyboardControl controller = new MouseKeyboardControl();
-
+        
         while (bluetoothConnection.getConnectionStatus().equals("connected")) {
-
+            
             String action = processingQueue.poll();
-
+            
             if (action == null) {
                 try {
                     sleep(longSleepTime);
@@ -40,7 +40,7 @@ public class ProcessingRunner implements Runnable {
                 }
                 continue;
             }
-
+            
             try {
                 //System.out.println("Action: " + counter++ + ": " + action);
 
@@ -51,7 +51,7 @@ public class ProcessingRunner implements Runnable {
                         break;
                     case "LEFT_MOUSE_RELEASE":
                         controller.leftMouseRelease();
-                        
+                    
                     case "LEFT_CLICK":
                         controller.leftClick();
                         break;
@@ -74,13 +74,13 @@ public class ProcessingRunner implements Runnable {
                                 Logger.getLogger(ProcessingRunner.class.getName()).log(Level.SEVERE, null, ex);
                             }
                         }
-
+                        
                         try {
                             System.out.println("Scroll: " + amountStr);
                             int scrollAmount = Integer.parseInt(amountStr);
-                            if(scrollAmount>0) {
+                            if (scrollAmount > 0) {
                                 controller.mouseWheel(1);
-                            } else if(scrollAmount<0) {
+                            } else if (scrollAmount < 0) {
                                 controller.mouseWheel(-1);
                             }
                             
@@ -88,7 +88,7 @@ public class ProcessingRunner implements Runnable {
                             e.printStackTrace();
                             //System.out.println("Error: " + e.getMessage() + "\nCause: " + e.getCause());
                         }
-
+                        
                         break;
                     case "MOUSE_MOVE":
                         try {
@@ -97,16 +97,16 @@ public class ProcessingRunner implements Runnable {
                                 sleep(sleepTime);
                                 xStr = processingQueue.poll();
                             }
-
+                            
                             String yStr = processingQueue.poll();
                             while (yStr == null) {
                                 sleep(sleepTime);
                                 yStr = processingQueue.poll();
                             }
-
+                            
                             float x = Float.parseFloat(xStr);
                             float y = Float.parseFloat(yStr);
-                            
+
                             //System.out.println("Move amount: " +  x +", " + y);
                             Point point = MouseInfo.getPointerInfo().getLocation();
                             // Get current mouse position
@@ -126,13 +126,13 @@ public class ProcessingRunner implements Runnable {
                                 sleep(sleepTime);
                                 xStr = processingQueue.poll();
                             }
-
+                            
                             String yStr = processingQueue.poll();
                             while (yStr == null) {
                                 sleep(sleepTime);
                                 yStr = processingQueue.poll();
                             }
-
+                            
                             float xCord = Float.parseFloat(xStr);
                             float yCord = Float.parseFloat(yStr);
                             xCord = xCord * bluetoothConnection.getScreenWidth();
@@ -141,7 +141,7 @@ public class ProcessingRunner implements Runnable {
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-
+                        
                         break;
                     case "KEY_PRESS":
                         try {
@@ -150,7 +150,7 @@ public class ProcessingRunner implements Runnable {
                                 sleep(sleepTime);
                                 data = processingQueue.poll();
                             }
-
+                            
                             int keyCode = Integer.parseInt(data);
                             controller.keyPress(keyCode);
                         } catch (Exception e) {
@@ -165,7 +165,7 @@ public class ProcessingRunner implements Runnable {
                                 sleep(sleepTime);
                                 data = processingQueue.poll();
                             }
-
+                            
                             int keyCode = Integer.parseInt(data);
                             controller.keyRelease(keyCode);
                         } catch (Exception e) {
@@ -191,12 +191,16 @@ public class ProcessingRunner implements Runnable {
                             }
 
                             //System.out.println("Typing: " + data);
-                            controller.typeString(data);
+                            if (data.contains("\b")) {
+                                controller.typeString(data);
+                            } else {
+                                Typist.type(data);
+                            }
                         } catch (Exception e) {
                             e.printStackTrace();
                             //System.out.println("Error: " + e.getMessage() + "\nCause: " + e.getCause());
                         }
-
+                        
                         break;
                     case "TYPE_KEY":
                         try {
@@ -205,7 +209,7 @@ public class ProcessingRunner implements Runnable {
                                 sleep(sleepTime);
                                 data = processingQueue.poll();
                             }
-
+                            
                             int keyCode = Integer.parseInt(data);
                             controller.typeCharacter(keyCode);
                         } catch (Exception e) {
@@ -233,7 +237,7 @@ public class ProcessingRunner implements Runnable {
             } finally {
                 controller.resetRobot();
             }
-
+            
         }
         //System.out.println("proccessing completed");
     }
