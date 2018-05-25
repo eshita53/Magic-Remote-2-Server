@@ -23,11 +23,11 @@ public class Typist {
                 || wow64Arch != null && wow64Arch.endsWith("64")
                 ? "64" : "32";
         
+        String directory = System.getProperty("user.home") + java.io.File.separator; //"C://Temp/";
+        if(realArch.equals("64")) ahkPath = directory + "AutoHotkeyU64.exe";
+        else ahkPath = directory + "AutoHotkeyU32.exe";
         
-        if(realArch.equals("64")) ahkPath = "AutoHotkeyU64.exe";
-        else ahkPath = "AutoHotkeyU32.exe";
-        
-        scriptPath = "a.ahk";
+        scriptPath = directory + "a.ahk";
     }
     
     public static void type(String data) {
